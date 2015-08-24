@@ -131,6 +131,9 @@ type Viper struct {
 	// A set of paths to look for the config file in
 	configPaths []string
 
+	// Boolean which tells viper whether to look through multiple configuration files
+	cascade bool
+
 	// A set of remote providers to search for the configuration
 	remoteProviders []*defaultRemoteProvider
 
@@ -158,6 +161,7 @@ func New() *Viper {
 	v.keyDelim = "."
 	v.configName = "config"
 	v.config = make(map[string]interface{})
+	v.cascade = false
 	v.override = make(map[string]interface{})
 	v.defaults = make(map[string]interface{})
 	v.kvstore = make(map[string]interface{})
@@ -611,7 +615,7 @@ func (v *Viper) find(key string) interface{} {
 		}
 	}
 
-	val, exists = v.config[key]
+	val, exists = v.findInConfig(key)
 	if exists {
 		jww.TRACE.Println(key, "found in config:", val)
 		return val
@@ -630,6 +634,19 @@ func (v *Viper) find(key string) interface{} {
 	}
 
 	return nil
+}
+
+func (v *Viper) findInConfig(key string) (interface{}, bool) {
+
+	if !v.cascade {
+		val, exists := v.config[key]
+		if exists {
+			jww.TRACE.Println(key, "found in config:", val)
+			return val, true
+		}
+	}
+
+	return "", false
 }
 
 // Check to see if the key has been set in any of the data locations
